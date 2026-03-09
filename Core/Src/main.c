@@ -21,20 +21,21 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app/app_main.hpp"
 
-// main.cpp를 호출하기 위한 include
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-  void test_main(void);
-#ifdef __cplusplus
-}
-#endif
+// // 1. test
+// #ifdef __cplusplus
+// extern "C"
+// {
+// #endif
+//   void test_main(void);
+// #ifdef __cplusplus
+// }
+// #endif
 
-// 디버거 확인용 UART 수신 버퍼
-extern uint8_t uart_rx_buf_test[20];
-extern uint32_t uart_rx_index;
+// // 디버거 확인용 UART 수신 버퍼
+// extern uint8_t uart_rx_buf_test[20];
+// extern uint32_t uart_rx_index;
 
 /* USER CODE END Includes */
 
@@ -121,7 +122,8 @@ int main(void)
   MX_TIM4_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  app_init();
+  HAL_UART_Receive_IT(&huart2, comm_get_rx_buffer(), 9);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,8 +131,15 @@ int main(void)
   while (1)
   {
     main_cnt++;
-    test_main();
-    HAL_Delay(100);
+
+    // test_main();
+
+    control_update();
+    shoot_update();
+    feeder_update();
+    communication_update();
+
+    HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -412,11 +421,18 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+  // for test
+  // if (huart->Instance == USART2)
+  // {
+  //   uart_rx_index++;
+  //   uart_rx_index %= 20;
+  //   HAL_UART_Receive_IT(&huart2, &uart_rx_buf_test[uart_rx_index], 1);
+  // }
+
   if (huart->Instance == USART2)
   {
-    uart_rx_index++;
-    uart_rx_index %= 20;
-    HAL_UART_Receive_IT(&huart2, &uart_rx_buf_test[uart_rx_index], 1);
+    comm_set_rx_done();
+    HAL_UART_Receive_IT(&huart2, comm_get_rx_buffer(), 9);
   }
 }
 

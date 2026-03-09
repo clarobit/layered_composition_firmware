@@ -1,68 +1,100 @@
-// #include "app/module/communication_module.hpp"
+#include "app/module/communication_module.hpp"
 
-// namespace app::module {
+namespace app::module {
 
-// CommunicationModule::CommunicationModule(app::device::Bluetooth &bluetooth)
-//     : bluetooth_(bluetooth), rx_byte_(0), index_(0), receiving_(false),
-//       escape_next_(false), command_ready_(false) {}
+CommunicationModule::CommunicationModule(
+    UART_HandleTypeDef *huart, GPIO_TypeDef *bt_power_port,
+    uint16_t bt_power_pin, GPIO_TypeDef *bt_state_port, uint16_t bt_state_pin,
+    ControlModule &control, ShootModule &shoot, FeederModule &feeder)
+    : bluetooth_(app::mcu::Uart(huart),
+                 app::mcu::GpioOut(bt_power_port, bt_power_pin),
+                 app::mcu::GpioIn(bt_state_port, bt_state_pin)),
+      control_(control), shoot_(shoot), feeder_(feeder) {}
 
-// void CommunicationModule::init() { bluetooth_.receiveIt(&rx_byte_, 1); }
+void CommunicationModule::start() {
+  bluetooth_.powerOn();
 
-// void CommunicationModule::update() {
-//   uint8_t data = rx_byte_;
+  rx_done_ = 0;
+  drop_requested_ = 0;
+  drop_reported_ = 0;
+}
 
-//   parseByte(data);
+void CommunicationModule::stop() {
+  bluetooth_.powerOff();
 
-//   bluetooth_.receiveIt(&rx_byte_, 1);
-// }
+  rx_done_ = 0;
+  drop_requested_ = 0;
+  drop_reported_ = 0;
+}
 
-// void CommunicationModule::parseByte(uint8_t data) {
-//   if (escape_next_) {
-//     buffer_[index_++] = data;
-//     escape_next_ = false;
-//     return;
-//   }
+void CommunicationModule::update() {
+  if (rx_done_ != 0U) {
+    handleRx();
+    rx_done_ = 0U;
+  }
 
-//   if (data == ESC_BYTE) {
-//     escape_next_ = true;
-//     return;
-//   }
+  handleFeeder();
+}
 
-//   if (data == START_BYTE) {
-//     receiving_ = true;
-//     index_ = 0;
-//     return;
-//   }
+uint8_t *CommunicationModule::getRxBuffer() { return rx_buf_; }
 
-//   if (!receiving_)
-//     return;
+void CommunicationModule::setRxDone() { rx_done_ = 1U; }
 
-//   if (data == END_BYTE) {
-//     if (index_ >= 5) {
-//       command_.x_angle = buffer_[0];
-//       command_.y_angle = buffer_[1];
-//       command_.up_speed = buffer_[2];
-//       command_.down_speed = buffer_[3];
-//       command_.drop = buffer_[4];
+void CommunicationModule::handleRx() {
+  const int16_t x_target = parseInt16(&rx_buf_[0]);
+  const int16_t y_target = parseInt16(&rx_buf_[2]);
+  const int16_t up_target = parseInt16(&rx_buf_[4]);
+  const int16_t down_target = parseInt16(&rx_buf_[6]);
+  const uint8_t drop = rx_buf_[8];
 
-//       command_ready_ = true;
-//     }
+  control_.setTarget(static_cast<int32_t>(x_target),
+                     static_cast<int32_t>(y_target));
+  shoot_.setTarget(up_target, down_target);
 
-//     receiving_ = false;
-//     index_ = 0;
-//     return;
-//   }
+  if (drop == DROP_OFF) {
+    feeder_.setState(FeederModule::State::IDLE);
+    drop_requested_ = 0U;
+    drop_reported_ = 0U;
+  } else if (drop == DROP_ON) {
+    drop_requested_ = 1U;
+    drop_reported_ = 0U;
+  }
 
-//   if (index_ < sizeof(buffer_)) {
-//     buffer_[index_++] = data;
-//   }
-// }
+  sendFrame(rx_buf_);
+}
 
-// bool CommunicationModule::hasCommand() const { return command_ready_; }
+void CommunicationModule::handleFeeder() {
+  if ((drop_requested_ != 0U) &&
+      (control_.getState() == ControlModule::State::READY) &&
+      (shoot_.getState() == ShootModule::State::READY) &&
+      (feeder_.getState() == FeederModule::State::IDLE)) {
+    feeder_.setState(FeederModule::State::RUNNING);
+  }
 
-// Command CommunicationModule::getCommand() {
-//   command_ready_ = false;
-//   return command_;
-// }
+  if ((feeder_.getState() == FeederModule::State::DONE) &&
+      (drop_reported_ == 0U)) {
+    sendDropDone();
 
-// } // namespace app::module
+    feeder_.setState(FeederModule::State::IDLE);
+    drop_requested_ = 0U;
+    drop_reported_ = 1U;
+  }
+}
+
+void CommunicationModule::sendFrame(const uint8_t *data) {
+  bluetooth_.send(data, FRAME_SIZE);
+}
+
+void CommunicationModule::sendDropDone() {
+  const uint8_t data = DROP_DONE;
+  bluetooth_.send(&data, 1);
+}
+
+int16_t CommunicationModule::parseInt16(const uint8_t *data) const {
+  const uint16_t value =
+      (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
+
+  return static_cast<int16_t>(value);
+}
+
+} // namespace app::module

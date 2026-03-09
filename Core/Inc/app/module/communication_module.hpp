@@ -1,40 +1,53 @@
-// #pragma once
+#pragma once
 
-// #include "app/device/bluetooth.hpp"
-// #include <stdint.h>
+#include "app/device/bluetooth.hpp"
+#include "app/module/control_module.hpp"
+#include "app/module/feeder_module.hpp"
+#include "app/module/shoot_module.hpp"
+#include "main.h"
 
-// namespace app::module {
+#include <cstdint>
 
-// class CommunicationModule {
-// public:
-//   explicit CommunicationModule(app::device::Bluetooth &bluetooth);
+namespace app::module {
 
-//   void init();
-//   void update();
+class CommunicationModule {
+public:
+  CommunicationModule(UART_HandleTypeDef *huart, GPIO_TypeDef *bt_power_port,
+                      uint16_t bt_power_pin, GPIO_TypeDef *bt_state_port,
+                      uint16_t bt_state_pin, ControlModule &control,
+                      ShootModule &shoot, FeederModule &feeder);
 
-//   bool hasCommand() const;
-//   Command getCommand();
+  void start();
+  void stop();
 
-// private:
-//   static constexpr uint8_t START_BYTE = 0xFF;
-//   static constexpr uint8_t END_BYTE = 0xFE;
-//   static constexpr uint8_t ESC_BYTE = 0xFD;
+  void update();
 
-//   app::device::Bluetooth &bluetooth_;
+  uint8_t *getRxBuffer();
+  void setRxDone();
 
-//   uint8_t rx_byte_;
+private:
+  static constexpr uint8_t FRAME_SIZE = 9;
+  static constexpr uint8_t DROP_OFF = 0;
+  static constexpr uint8_t DROP_ON = 1;
+  static constexpr uint8_t DROP_DONE = 0xFF;
 
-//   uint8_t buffer_[8];
-//   uint8_t index_;
+  app::device::Bluetooth bluetooth_;
 
-//   bool receiving_;
-//   bool escape_next_;
+  ControlModule &control_;
+  ShootModule &shoot_;
+  FeederModule &feeder_;
 
-//   bool command_ready_;
+  uint8_t rx_buf_[FRAME_SIZE] = {0};
 
-//   Command command_;
+  uint8_t rx_done_ = 0;
+  uint8_t drop_requested_ = 0;
+  uint8_t drop_reported_ = 0;
 
-//   void parseByte(uint8_t data);
-// };
+  void handleRx();
+  void handleFeeder();
+  void sendFrame(const uint8_t *data);
+  void sendDropDone();
+  int16_t parseInt16(const uint8_t *data) const;
+};
 
-// } // namespace app::module
+} // namespace app::module
