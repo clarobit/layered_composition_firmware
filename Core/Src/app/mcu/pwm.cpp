@@ -10,11 +10,17 @@ void Pwm::start() { HAL_TIM_PWM_Start(htim_, channel_); }
 void Pwm::stop() { HAL_TIM_PWM_Stop(htim_, channel_); }
 
 void Pwm::setDuty(uint16_t duty) {
+  uint16_t max = getMaxDuty();
+
+  if (duty > max) {
+    duty = max;
+  }
+
   __HAL_TIM_SET_COMPARE(htim_, channel_, duty);
 }
 
-uint16_t Pwm::getMaxDuty() const {
-  return static_cast<uint16_t>(__HAL_TIM_GET_AUTORELOAD(htim_));
-}
+uint16_t Pwm::getDuty() const { return __HAL_TIM_GET_COMPARE(htim_, channel_); }
+
+uint16_t Pwm::getMaxDuty() const { return htim_->Init.Period; }
 
 } // namespace app::mcu

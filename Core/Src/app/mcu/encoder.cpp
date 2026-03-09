@@ -4,10 +4,7 @@ namespace app::mcu {
 
 Encoder::Encoder(TIM_HandleTypeDef *htim) : htim_(htim) {}
 
-void Encoder::start() {
-  // Encoder uses timer channels; HAL provides a dedicated start/stop API.
-  HAL_TIM_Encoder_Start(htim_, TIM_CHANNEL_ALL);
-}
+void Encoder::start() { HAL_TIM_Encoder_Start(htim_, TIM_CHANNEL_ALL); }
 
 void Encoder::stop() { HAL_TIM_Encoder_Stop(htim_, TIM_CHANNEL_ALL); }
 

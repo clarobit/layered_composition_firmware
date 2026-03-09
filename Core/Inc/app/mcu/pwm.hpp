@@ -13,6 +13,8 @@ public:
   void stop();
 
   void setDuty(uint16_t duty);
+  uint16_t getDuty() const;
+
   uint16_t getMaxDuty() const;
 
 private:

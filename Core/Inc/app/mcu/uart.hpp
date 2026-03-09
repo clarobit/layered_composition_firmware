@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 
 #include "stm32h7xx_hal.h"
@@ -14,8 +13,6 @@ public:
 
   HAL_StatusTypeDef transmit(const uint8_t *data, uint16_t len,
                              uint32_t timeout_ms = 1000U);
-
-  HAL_StatusTypeDef transmitIt(const uint8_t *data, uint16_t len);
 
   HAL_StatusTypeDef receiveIt(uint8_t *data, uint16_t len);
 

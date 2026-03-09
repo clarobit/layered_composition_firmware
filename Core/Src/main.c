@@ -27,10 +27,14 @@
 extern "C"
 {
 #endif
-  void test_main(UART_HandleTypeDef *huart);
+  void test_main(void);
 #ifdef __cplusplus
 }
 #endif
+
+// 디버거 확인용 UART 수신 버퍼
+extern uint8_t uart_rx_buf[20];
+extern uint32_t uart_rx_index;
 
 /* USER CODE END Includes */
 
@@ -125,7 +129,8 @@ int main(void)
   while (1)
   {
     main_cnt++;
-    test_main(&huart2);
+    test_main();
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -393,12 +398,27 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART2)
+  {
+    uart_rx_index++;
+    uart_rx_index %= 20;
+    HAL_UART_Receive_IT(&huart2, &uart_rx_buf[uart_rx_index], 1);
+  }
+}
 
 /* USER CODE END 4 */
 
