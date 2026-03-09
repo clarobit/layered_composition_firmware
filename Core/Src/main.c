@@ -33,7 +33,7 @@ extern "C"
 #endif
 
 // 디버거 확인용 UART 수신 버퍼
-extern uint8_t uart_rx_buf[20];
+extern uint8_t uart_rx_buf_test[20];
 extern uint32_t uart_rx_index;
 
 /* USER CODE END Includes */
@@ -416,7 +416,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   {
     uart_rx_index++;
     uart_rx_index %= 20;
-    HAL_UART_Receive_IT(&huart2, &uart_rx_buf[uart_rx_index], 1);
+    HAL_UART_Receive_IT(&huart2, &uart_rx_buf_test[uart_rx_index], 1);
   }
 }
 

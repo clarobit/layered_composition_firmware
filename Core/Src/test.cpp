@@ -96,7 +96,7 @@ static void pwm_test() {
 
 // =====================================
 // MCU test 4 - UART
-uint8_t uart_rx_buf[20];
+uint8_t uart_rx_buf_test[20];
 uint32_t uart_rx_index = 0;
 
 static void uart_test() {
@@ -104,13 +104,13 @@ static void uart_test() {
   static bool started = false;
 
   if (!started) {
-    uart.receiveIt(&uart_rx_buf[uart_rx_index], 1);
+    uart.receiveIt(&uart_rx_buf_test[uart_rx_index], 1);
     started = true;
   }
 
   const uint8_t msg[] = "uart test start\r\n";
   uart.transmit(msg, sizeof(msg) - 1);
 
-  test_value = uart_rx_buf[0]; // 디버거 확인용
+  test_value = uart_rx_buf_test[0]; // 디버거 확인용
 }
 // =====================================
